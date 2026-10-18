@@ -15,4 +15,4 @@ Hoặc cài thủ công:
    Screen & System Audio Recording, rồi **khởi động lại app**.
 
 Cập nhật lên bản mới không cần cấp lại quyền, vì mọi bản đều được ký bằng cùng một chứng chỉ.
-Nếu đã bật quyền mà app vẫn báo chưa có, vào Cài đặt → "Đặt lại quyền".
+Nếu đã bật quyền mà app vẫn báo chưa có, mở menu SnipText → "Cấp quyền ghi màn hình…" → "Đặt lại quyền".

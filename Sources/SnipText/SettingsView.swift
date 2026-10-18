@@ -33,25 +33,6 @@ struct SettingsView: View {
                         launchAtLogin = SMAppService.mainApp.status == .enabled
                     }
                 }
-
-            LabeledContent("Hướng dẫn:") {
-                Button("Mở lại") { OnboardingWindow.show(step: .welcome) }
-            }
-
-            Section("Quyền chụp màn hình") {
-                LabeledContent("Trạng thái:") {
-                    if Permissions.hasScreenCaptureAccess {
-                        Label("Đã cấp", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
-                    } else {
-                        Label("Chưa có hiệu lực", systemImage: "exclamationmark.triangle.fill").foregroundStyle(.orange)
-                    }
-                }
-                HStack {
-                    Button("Cấp quyền") { Permissions.requestAccess() }
-                    Button("Khởi động lại") { Permissions.relaunch() }
-                    Button("Đặt lại quyền") { Permissions.resetPermission() }
-                }
-            }
         }
         .formStyle(.grouped)
         .background(WindowReader { window in

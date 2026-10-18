@@ -30,8 +30,8 @@ Gỡ sạch (cả lịch sử và cài đặt) bằng `brew uninstall --zap --ca
 
 | Nguyên nhân | Cách xử lý |
 |---|---|
-| Chưa khởi động lại app sau khi bật quyền | Cài đặt → **Khởi động lại** |
-| Mục quyền thuộc về bản cài cũ (công tắc vẫn bật nhưng không có tác dụng) | Cài đặt → **Đặt lại quyền**, rồi bật lại |
+| Chưa khởi động lại app sau khi bật quyền | Menu SnipText → **Cấp quyền ghi màn hình…**, app nhận ra quyền đã bật và hiện nút **Khởi động lại** |
+| Mục quyền thuộc về bản cài cũ (công tắc vẫn bật nhưng không có tác dụng) | Menu SnipText → **Cấp quyền ghi màn hình…** → **Đặt lại quyền**, rồi bật lại |
 | App chạy từ Downloads, chưa gỡ quarantine (macOS chạy bản tạm) | Kéo vào Applications và chạy lệnh `xattr` ở trên. App sẽ tự cảnh báo trường hợp này |
 | Chạy file thực thi trực tiếp từ Terminal/Xcode (quyền bị tính cho Terminal/Xcode) | Mở bằng `open SnipText.app` hoặc từ Finder |
 
