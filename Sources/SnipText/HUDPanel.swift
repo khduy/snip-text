@@ -25,13 +25,8 @@ final class HUDPanel {
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
     }
 
-    func show(_ message: String, action: Action? = nil) {
-        let view = HUDView(message: message, action: action.map { action in
-            (action.title, { [weak self] in
-                action.perform()
-                self?.show("Đã copy")
-            })
-        })
+    func show(_ title: String, detail: String? = nil, symbol: String, action: Action? = nil) {
+        let view = HUDView(title: title, detail: detail, symbol: symbol, action: action)
         let hosting = NSHostingView(rootView: view)
         panel.contentView = hosting
         panel.setContentSize(hosting.fittingSize)
@@ -46,34 +41,47 @@ final class HUDPanel {
 
         hideTask?.cancel()
         hideTask = Task { [panel] in
-            try? await Task.sleep(for: .seconds(action == nil ? 1.5 : 4))
+            // Long enough to read the preview; longer still when there is a button to reach.
+            try? await Task.sleep(for: .seconds(action != nil ? 4 : detail != nil ? 2.5 : 1.5))
             guard !Task.isCancelled else { return }
             panel.orderOut(nil)
         }
     }
 }
 
-private struct HUDView: View {
-    let message: String
-    let action: (String, () -> Void)?
+struct HUDView: View {
+    let title: String
+    let detail: String?
+    let symbol: String
+    let action: HUDPanel.Action?
 
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "text.viewfinder")
-                .font(.title3)
-            Text(message)
-                .lineLimit(2)
-                .truncationMode(.tail)
-                .frame(maxWidth: 360, alignment: .leading)
-            if let (title, perform) = action {
-                Button(title, action: perform)
+        HStack(spacing: 10) {
+            Image(systemName: symbol)
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(.secondary)
+                .frame(width: 20)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title)
+                    .font(.system(size: 13, weight: .semibold))
+                if let detail {
+                    Text(detail)
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
+            .frame(maxWidth: 340, alignment: .leading)
+            if let action {
+                Button(action.title, action: action.perform)
                     .buttonStyle(.bordered)
                     .controlSize(.small)
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .background(.regularMaterial, in: Capsule())
+        .padding(.leading, 12)
+        .padding(.trailing, 14)
+        .padding(.vertical, 9)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .fixedSize()
     }
 }

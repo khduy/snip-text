@@ -7,8 +7,9 @@ import SwiftUI
 /// `open SnipText.app --args --self-test` captures the main display with the app's own
 /// Screen Recording permission, OCRs the menu bar strip, writes a report and quits.
 ///
-/// `open SnipText.app --args --render-previews <dir>` renders the selection overlay and the
-/// onboarding steps (with synthetic content, no screen access needed) to PNGs and quits.
+/// `open SnipText.app --args --render-previews <dir>` renders the selection overlay, the HUD,
+/// the menu bar icon and the onboarding steps (with synthetic content, no screen access needed)
+/// to PNGs and quits.
 @MainActor
 enum SelfTest {
     static let reportURL = CaptureService.lastCaptureURL
@@ -120,6 +121,37 @@ enum SelfTest {
             if let rep = overlay.renderPreview(size: size, selection: selection) {
                 write(rep, to: directory.appendingPathComponent("\(name).png"))
             }
+        }
+
+        let toasts: [(String, HUDView)] = [
+            ("hud-text", HUDView(title: "Đã copy 3 dòng", detail: "Hoá đơn số 00123 – Công ty TNHH Thương mại Dịch vụ POS…",
+                                 symbol: "text.alignleft", action: nil)),
+            ("hud-both", HUDView(title: "Đã copy", detail: "Quét mã để thanh toán", symbol: "text.alignleft",
+                                 action: ("Copy mã QR", {}))),
+            ("hud-empty", HUDView(title: "Không thấy chữ trong vùng này", detail: nil,
+                                  symbol: "text.magnifyingglass", action: nil)),
+        ]
+        for (name, view) in toasts {
+            let renderer = ImageRenderer(content: view.padding(20).background(Color(nsColor: .windowBackgroundColor)))
+            renderer.scale = 2
+            if let image = renderer.cgImage {
+                write(NSBitmapImageRep(cgImage: image), to: directory.appendingPathComponent("\(name).png"))
+            }
+        }
+
+        for needsAttention in [false, true] {
+            let icon = MenuBarIcon.image(needsAttention: needsAttention)
+            let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 36 * 4, pixelsHigh: 36 * 4,
+                                       bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+                                       colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0)!
+            rep.size = NSSize(width: 36, height: 36)
+            NSGraphicsContext.saveGraphicsState()
+            NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
+            NSColor.white.setFill()
+            NSRect(x: 0, y: 0, width: 36, height: 36).fill()
+            icon.draw(in: NSRect(x: 9, y: 9, width: 18, height: 18))
+            NSGraphicsContext.restoreGraphicsState()
+            write(rep, to: directory.appendingPathComponent("menubar-icon\(needsAttention ? "-attention" : "").png"))
         }
 
         for step in OnboardingModel.Step.allCases {

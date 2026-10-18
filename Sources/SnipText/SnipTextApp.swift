@@ -17,8 +17,11 @@ struct SnipTextApp: App {
     }
 
     var body: some Scene {
-        MenuBarExtra("SnipText", systemImage: "text.viewfinder") {
+        MenuBarExtra {
             MenuContent(controller: controller)
+        } label: {
+            // Access only changes across a relaunch (see Permissions), so reading it here is enough.
+            Image(nsImage: MenuBarIcon.image(needsAttention: !Permissions.hasScreenCaptureAccess))
         }
 
         Settings {
@@ -29,27 +32,51 @@ struct SnipTextApp: App {
 
 private struct MenuContent: View {
     let controller: AppController
+    @AppStorage(PrefKey.lineBreakMode) private var lineBreakMode = LineBreakMode.keepLines
     @Environment(\.openSettings) private var openSettings
 
-    var body: some View {
-        Button("Chụp lấy chữ") { controller.capture() }
-            .globalKeyboardShortcut(.capture)
+    /// How many captures sit directly in the menu; the rest go under "Tất cả lịch sử".
+    private static let recentCount = 3
 
-        Menu("Lịch sử") {
-            if controller.history.items.isEmpty {
-                Text("Chưa có gì")
-            } else {
-                ForEach(controller.history.items.prefix(10)) { item in
-                    Button(snippet(item.primaryContent)) { controller.copy(item.primaryContent) }
+    var body: some View {
+        if !Permissions.hasScreenCaptureAccess {
+            Button {
+                OnboardingWindow.show(step: .permission)
+            } label: {
+                Label("Cấp quyền ghi màn hình…", systemImage: "exclamationmark.triangle")
+            }
+            Divider()
+        }
+
+        Button("Lấy chữ từ màn hình") { controller.capture() }
+            .globalKeyboardShortcut(.capture)
+        Button("Chụp lại vùng trước") { controller.captureLastRegion() }
+            .globalKeyboardShortcut(.recapture)
+            .disabled(controller.lastRegion == nil)
+
+        // A titled Section draws a separator on each side itself, so no Divider goes next to it.
+        let items = controller.history.items
+        if items.isEmpty {
+            Divider()
+        } else {
+            Section("Gần đây") {
+                ForEach(Array(items.prefix(Self.recentCount).enumerated()), id: \.element.id) { index, item in
+                    historyButton(item)
+                        .keyboardShortcut(KeyEquivalent(Character(String(index + 1))), modifiers: .command)
                 }
-                Divider()
-                Button("Xoá lịch sử") { controller.history.clear() }
+                Menu("Tất cả lịch sử") {
+                    ForEach(items.prefix(20)) { historyButton($0) }
+                    Divider()
+                    Button("Xoá lịch sử") { controller.history.clear() }
+                }
             }
         }
 
-        Divider()
+        Picker("Xuống dòng", selection: $lineBreakMode) {
+            ForEach(LineBreakMode.allCases) { Text($0.title).tag($0) }
+        }
 
-        Button("Hướng dẫn bắt đầu…") { OnboardingWindow.show(step: .welcome) }
+        Divider()
 
         Button("Cài đặt…") {
             openSettings()
@@ -62,9 +89,14 @@ private struct MenuContent: View {
             .keyboardShortcut("q")
     }
 
-    private func snippet(_ text: String) -> String {
-        let flat = text.replacingOccurrences(of: "\n", with: " ")
-        return flat.count > 40 ? flat.prefix(40) + "…" : flat
+    /// The icon tells a QR read from text, since the snippet alone often cannot.
+    private func historyButton(_ item: HistoryItem) -> some View {
+        Button {
+            controller.copy(item)
+        } label: {
+            Label(TextFormatter.snippet(item.primaryContent, limit: 44),
+                  systemImage: item.text.isEmpty ? "qrcode" : "text.alignleft")
+        }
     }
 }
 

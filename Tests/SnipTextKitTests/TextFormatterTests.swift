@@ -47,4 +47,13 @@ private func line(_ text: String, row: Double, x: Double = 0.05, width: Double =
         #expect(TextFormatter.format([], mode: .mergeParagraphs) == "")
         #expect(TextFormatter.format([line("   ", row: 0)], mode: .keepLines) == "")
     }
+
+    @Test func snippetFlattensWhitespace() {
+        #expect(TextFormatter.snippet("  Hoá đơn\n\nsố   00123 ", limit: 40) == "Hoá đơn số 00123")
+    }
+
+    @Test func snippetTruncatesToLimit() {
+        #expect(TextFormatter.snippet("abcdefghij", limit: 5) == "abcd…")
+        #expect(TextFormatter.snippet("abcde", limit: 5) == "abcde")
+    }
 }

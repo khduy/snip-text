@@ -22,6 +22,13 @@ public enum LineBreakMode: String, CaseIterable, Sendable, Identifiable {
 }
 
 public enum TextFormatter {
+    /// A one-line preview for menus and toasts: whitespace runs (line breaks included)
+    /// collapse to one space, and anything past `limit` characters becomes "…".
+    public static func snippet(_ text: String, limit: Int) -> String {
+        let flat = text.split(whereSeparator: \.isWhitespace).joined(separator: " ")
+        return flat.count > limit ? flat.prefix(limit - 1) + "…" : flat
+    }
+
     /// Turns raw fragments into text, ordered top-to-bottom then left-to-right.
     public static func format(_ fragments: [OCRFragment], mode: LineBreakMode) -> String {
         let lines = groupIntoLines(fragments)
