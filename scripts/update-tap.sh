@@ -39,13 +39,13 @@ cask "sniptext" do
                    args: ["-dr", "com.apple.quarantine", "#{appdir}/SnipText.app"]
   end
 
-  uninstall quit: "vn.posapp.sniptext"
+  uninstall quit: "io.github.khduy.sniptext"
 
   zap trash: [
     "~/Library/Application Support/SnipText",
     "~/Library/Caches/SnipText",
-    "~/Library/Caches/vn.posapp.sniptext",
-    "~/Library/Preferences/vn.posapp.sniptext.plist",
+    "~/Library/Caches/io.github.khduy.sniptext",
+    "~/Library/Preferences/io.github.khduy.sniptext.plist",
   ]
 
   caveats <<~EOS

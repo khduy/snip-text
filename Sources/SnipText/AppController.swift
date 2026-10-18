@@ -4,7 +4,7 @@ import Observation
 import OSLog
 import SnipTextKit
 
-private let logger = Logger(subsystem: "vn.posapp.sniptext", category: "capture")
+private let logger = Logger(subsystem: "io.github.khduy.sniptext", category: "capture")
 
 @MainActor
 @Observable

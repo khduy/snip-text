@@ -4,7 +4,7 @@
 # Environment:
 #   UNIVERSAL=1        build for arm64 + x86_64
 #   VERSION=1.2.3      stamp the version into Info.plist; without it the app is a dev build
-#                      (bundle ID vn.posapp.sniptext.dev, name "SnipText Dev")
+#                      (bundle ID io.github.khduy.sniptext.dev, name "SnipText Dev")
 #   SIGN_IDENTITY=...  signing identity (default: project-local "SnipText Dev", else ad-hoc)
 #   SIGN_KEYCHAIN=...  keychain holding SIGN_IDENTITY (used by CI)
 set -euo pipefail
@@ -44,7 +44,7 @@ fi
 # Local builds (no VERSION) get their own bundle ID and name, so their Screen Recording entry,
 # settings and permission resets stay apart from an installed release.
 if [[ -z "${VERSION:-}" ]]; then
-  /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier vn.posapp.sniptext.dev" "$APP/Contents/Info.plist"
+  /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier io.github.khduy.sniptext.dev" "$APP/Contents/Info.plist"
   /usr/libexec/PlistBuddy -c "Set :CFBundleName SnipText Dev" "$APP/Contents/Info.plist"
   /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName SnipText Dev" "$APP/Contents/Info.plist"
 fi

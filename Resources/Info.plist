@@ -11,7 +11,7 @@
 	<key>CFBundleIconFile</key>
 	<string>AppIcon</string>
 	<key>CFBundleIdentifier</key>
-	<string>vn.posapp.sniptext</string>
+	<string>io.github.khduy.sniptext</string>
 	<key>CFBundleName</key>
 	<string>SnipText</string>
 	<key>CFBundlePackageType</key>

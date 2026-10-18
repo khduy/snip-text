@@ -46,8 +46,8 @@ open build/SnipText.app
 swift test                    # nếu xcode-select trỏ vào CLT: DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer swift test
 ```
 
-Bản build local có bundle ID `vn.posapp.sniptext.dev` (tên "SnipText Dev"), nên quyền và cài đặt của nó tách
-khỏi bản SnipText đã cài. Chỉ bản phát hành (có `VERSION`) mới dùng `vn.posapp.sniptext`.
+Bản build local có bundle ID `io.github.khduy.sniptext.dev` (tên "SnipText Dev"), nên quyền và cài đặt của nó tách
+khỏi bản SnipText đã cài. Chỉ bản phát hành (có `VERSION`) mới dùng `io.github.khduy.sniptext`.
 
 `.signing/` không đưa lên git. Thư mục này chứa `SnipTextDev.p12` (chứng chỉ + khoá riêng) và mật khẩu của nó.
 **Hãy sao lưu hai file này.** Nếu mất, các bản sau sẽ ký bằng chứng chỉ khác và mọi người dùng phải cấp lại quyền.
