@@ -1,25 +1,19 @@
 import AppKit
 import SnipTextKit
 
-/// What the user picked: the cropped image and where it came from.
-struct Selection {
-    var image: CGImage
-    var region: CaptureRegion
-}
-
 /// Full-screen region picker drawn over frozen snapshots of every display.
 /// Drag to select, Esc or right-click to cancel.
 @MainActor
 final class SelectionOverlay {
     private var windows: [OverlayWindow] = []
-    private var continuation: CheckedContinuation<Selection?, Never>?
+    private var continuation: CheckedContinuation<CGImage?, Never>?
     /// The app the user was working in; focus goes back to it when the overlay closes.
     private var previousApp: NSRunningApplication?
 
     private static var active: SelectionOverlay?
 
     /// Returns the selected region cropped from the snapshot, or nil if cancelled.
-    static func selectRegion(from snapshots: [DisplaySnapshot]) async -> Selection? {
+    static func selectRegion(from snapshots: [DisplaySnapshot]) async -> CGImage? {
         let overlay = SelectionOverlay()
         active = overlay
         defer { active = nil }
@@ -39,12 +33,7 @@ final class SelectionOverlay {
             guard let id = screen.displayID,
                   let snapshot = snapshots.first(where: { $0.displayID == id }) else { continue }
             let view = SelectionView(image: snapshot.image)
-            view.onFinish = { [weak self] rect in
-                self?.finish(with: rect.flatMap { rect in
-                    let region = CaptureRegion(displayID: id, rect: rect, displaySize: screen.frame.size)
-                    return CaptureService.crop(snapshot, to: region).map { Selection(image: $0, region: region) }
-                })
-            }
+            view.onFinish = { [weak self] image in self?.finish(with: image) }
             let window = OverlayWindow(screen: screen, view: view)
             windows.append(window)
         }
@@ -61,7 +50,7 @@ final class SelectionOverlay {
         NSCursor.crosshair.set()
     }
 
-    private func finish(with selection: Selection?) {
+    private func finish(with image: CGImage?) {
         windows.forEach { $0.orderOut(nil) }
         windows.removeAll()
         NSCursor.arrow.set()
@@ -69,7 +58,7 @@ final class SelectionOverlay {
             NSApp.yieldActivation(to: previousApp)
             previousApp.activate()
         }
-        continuation?.resume(returning: selection)
+        continuation?.resume(returning: image)
         continuation = nil
     }
 }
@@ -91,8 +80,7 @@ private final class OverlayWindow: NSWindow {
 }
 
 final class SelectionView: NSView {
-    /// Called with the selected rect in points (origin top-left), or nil when cancelled.
-    var onFinish: ((CGRect?) -> Void)?
+    var onFinish: ((CGImage?) -> Void)?
 
     private let image: CGImage
     private var dragStart: NSPoint?
@@ -146,8 +134,9 @@ final class SelectionView: NSView {
             needsDisplay = true
             return
         }
-        onFinish?(CGRect(x: selection.minX, y: bounds.height - selection.maxY,
-                         width: selection.width, height: selection.height))
+        let topLeft = CGRect(x: selection.minX, y: bounds.height - selection.maxY,
+                             width: selection.width, height: selection.height)
+        onFinish?(CaptureService.crop(image, toPoints: topLeft, pointSize: bounds.size))
     }
 
     override func rightMouseDown(with event: NSEvent) { onFinish?(nil) }

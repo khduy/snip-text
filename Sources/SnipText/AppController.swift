@@ -11,15 +11,10 @@ private let logger = Logger(subsystem: "vn.posapp.sniptext", category: "capture"
 final class AppController {
     let history = HistoryStore()
     private(set) var isCapturing = false
-    /// Where the last selection was made, for "capture again". Kept for this session only.
-    private(set) var lastRegion: CaptureRegion?
 
     init() {
         KeyboardShortcuts.onKeyUp(for: .capture) { [weak self] in
             self?.capture()
-        }
-        KeyboardShortcuts.onKeyUp(for: .recapture) { [weak self] in
-            self?.captureLastRegion()
         }
         Task.detached(priority: .utility) { await OCRService.warmUp() }
 
@@ -32,16 +27,6 @@ final class AppController {
     }
 
     func capture() {
-        start(reusing: nil)
-    }
-
-    /// Captures the last region again without the overlay; falls back to the overlay when
-    /// there is none yet or its display has gone or changed resolution.
-    func captureLastRegion() {
-        start(reusing: lastRegion)
-    }
-
-    private func start(reusing region: CaptureRegion?) {
         guard !isCapturing else { return }
         guard Permissions.ensureScreenCaptureAccess() else { return }
 
@@ -49,12 +34,12 @@ final class AppController {
         Task {
             defer { isCapturing = false }
             do {
-                guard let selection = try await select(reusing: region) else { return }
-                lastRegion = selection.region
-                CaptureService.saveForDiagnostics(selection.image)
-                let result = try await OCRService.recognize(selection.image)
+                let snapshots = try await CaptureService.captureDisplays()
+                guard let image = await SelectionOverlay.selectRegion(from: snapshots) else { return }
+                CaptureService.saveForDiagnostics(image)
+                let result = try await OCRService.recognize(image)
                 logger.notice("""
-                    captured \(selection.image.width)x\(selection.image.height), \
+                    captured \(image.width)x\(image.height), \
                     \(result.fragments.count) text fragments, \(result.barcodes.count) barcodes
                     """)
                 handle(result)
@@ -65,16 +50,6 @@ final class AppController {
                                      symbol: "exclamationmark.triangle")
             }
         }
-    }
-
-    private func select(reusing region: CaptureRegion?) async throws -> Selection? {
-        if let region,
-           NSScreen.screens.first(where: { $0.displayID == region.displayID })?.frame.size == region.displaySize,
-           let snapshot = try await CaptureService.captureDisplays(only: region.displayID).first,
-           let image = CaptureService.crop(snapshot, to: region) {
-            return Selection(image: image, region: region)
-        }
-        return await SelectionOverlay.selectRegion(from: try await CaptureService.captureDisplays())
     }
 
     func copy(_ string: String) {

@@ -14,7 +14,6 @@ struct SettingsView: View {
     var body: some View {
         Form {
             KeyboardShortcuts.Recorder("Phím tắt chụp:", name: .capture)
-            KeyboardShortcuts.Recorder("Chụp lại vùng trước:", name: .recapture)
 
             Picker("Xuống dòng:", selection: $lineBreakMode) {
                 ForEach(LineBreakMode.allCases) { Text($0.title).tag($0) }

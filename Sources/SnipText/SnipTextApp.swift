@@ -32,7 +32,6 @@ struct SnipTextApp: App {
 
 private struct MenuContent: View {
     let controller: AppController
-    @AppStorage(PrefKey.lineBreakMode) private var lineBreakMode = LineBreakMode.keepLines
     @Environment(\.openSettings) private var openSettings
 
     /// How many captures sit directly in the menu; the rest go under "Tất cả lịch sử".
@@ -50,9 +49,6 @@ private struct MenuContent: View {
 
         Button("Lấy chữ từ màn hình") { controller.capture() }
             .globalKeyboardShortcut(.capture)
-        Button("Chụp lại vùng trước") { controller.captureLastRegion() }
-            .globalKeyboardShortcut(.recapture)
-            .disabled(controller.lastRegion == nil)
 
         // A titled Section draws a separator on each side itself, so no Divider goes next to it.
         let items = controller.history.items
@@ -71,12 +67,6 @@ private struct MenuContent: View {
                 }
             }
         }
-
-        Picker("Xuống dòng", selection: $lineBreakMode) {
-            ForEach(LineBreakMode.allCases) { Text($0.title).tag($0) }
-        }
-
-        Divider()
 
         Button("Cài đặt…") {
             openSettings()
