@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:snip-text}",
+            "name": "Debug SnipText",
+            "target": "SnipText",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug SnipText"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:snip-text}",
+            "name": "Release SnipText",
+            "target": "SnipText",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release SnipText"
+        }
+    ]
+}

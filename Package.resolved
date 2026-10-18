@@ -1,0 +1,24 @@
+{
+  "originHash" : "ef0817cc99d674889fdd13005ba62b4d51f118f98b6452939ae628b0d757112d",
+  "pins" : [
+    {
+      "identity" : "keyboardshortcuts",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/sindresorhus/KeyboardShortcuts",
+      "state" : {
+        "revision" : "1aef85578fdd4f9eaeeb8d53b7b4fc31bf08fe27",
+        "version" : "2.4.0"
+      }
+    },
+    {
+      "identity" : "permissionflow",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/jaywcjlove/PermissionFlow",
+      "state" : {
+        "revision" : "cb96db4bfd2342e8d8c56f2a7d51ca65b8aed6e2",
+        "version" : "2.11.3"
+      }
+    }
+  ],
+  "version" : 3
+}
