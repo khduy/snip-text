@@ -53,9 +53,12 @@ struct SettingsView: View {
                     }
                 }
 
-            Toggle(isOn: $showMenuBarIcon) {
-                Text("Hiện icon trên thanh menu")
-                Text("Khi ẩn, phím tắt vẫn hoạt động. Mở lại SnipText từ Spotlight hoặc Finder để vào Cài đặt.")
+            Toggle("Hiện icon trên thanh menu", isOn: $showMenuBarIcon)
+
+            // The menu's Quit is gone with the icon, and the app has no main menu for ⌘Q.
+            if !showMenuBarIcon {
+                Button("Thoát SnipText") { NSApp.terminate(nil) }
+                    .keyboardShortcut("q")
             }
         }
         .formStyle(.grouped)

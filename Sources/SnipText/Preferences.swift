@@ -13,6 +13,13 @@ enum PrefKey {
     static let showMenuBarIcon = "showMenuBarIcon"
 }
 
+extension UserDefaults {
+    /// `bool(forKey:)` reads a missing key as false; this lets a default-on setting say so.
+    func bool(forKey key: String, default defaultValue: Bool) -> Bool {
+        object(forKey: key) == nil ? defaultValue : bool(forKey: key)
+    }
+}
+
 enum Preferences {
     static var lineBreakMode: LineBreakMode {
         UserDefaults.standard.string(forKey: PrefKey.lineBreakMode).flatMap(LineBreakMode.init) ?? .keepLines

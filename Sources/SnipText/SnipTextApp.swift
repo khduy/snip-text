@@ -30,6 +30,26 @@ struct SnipTextApp: App {
 }
 
 private final class AppDelegate: NSObject, NSApplicationDelegate {
+    /// Without the icon nothing would show that the app started, so open Settings, unless the
+    /// launch came from "Mở cùng macOS" (a window at every login would be a nuisance) or another
+    /// window (onboarding, self-test) is already up.
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        MainActor.assumeIsolated {
+            guard !UserDefaults.standard.bool(forKey: PrefKey.showMenuBarIcon, default: true),
+                  !Self.launchedAsLoginItem, !SelfTest.isRequested,
+                  // Titled only: the status item's own zero-height window also counts as visible.
+                  !NSApp.windows.contains(where: { $0.isVisible && $0.styleMask.contains(.titled) })
+            else { return }
+            SettingsWindow.show()
+        }
+    }
+
+    private static var launchedAsLoginItem: Bool {
+        guard let event = NSAppleEventManager.shared().currentAppleEvent,
+              event.eventID == kAEOpenApplication else { return false }
+        return event.paramDescriptor(forKeyword: keyAEPropData)?.enumCodeValue == keyAELaunchedAsLogInItem
+    }
+
     /// Opening the app again (Spotlight, Finder) while it runs shows Settings; with the menu bar
     /// icon hidden this is the only way back in.
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
