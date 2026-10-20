@@ -3,10 +3,29 @@ import ServiceManagement
 import SnipTextKit
 import SwiftUI
 
-struct SettingsView: View {
-    /// The window SwiftUI put this view in, kept so the menu can bring it front on later opens.
-    static weak var window: NSWindow?
+/// The Settings window, owned here rather than by a SwiftUI `Settings` scene: that scene can only
+/// be opened from a view, and with the menu bar icon hidden there is none.
+@MainActor
+enum SettingsWindow {
+    private static var window: NSWindow?
 
+    static func show() {
+        if let window {
+            window.bringToFront()
+            return
+        }
+        let window = NSWindow(contentViewController: NSHostingController(rootView: SettingsView()))
+        window.title = "Cài đặt SnipText"
+        window.styleMask = [.titled, .closable]
+        window.isReleasedWhenClosed = false
+        window.center()
+        Self.window = window
+        window.bringToFront()
+    }
+}
+
+struct SettingsView: View {
+    @AppStorage(PrefKey.showMenuBarIcon) private var showMenuBarIcon = true
     @AppStorage(PrefKey.lineBreakMode) private var lineBreakMode = LineBreakMode.keepLines
     @AppStorage(PrefKey.preferBarcode) private var preferBarcode = false
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
@@ -33,38 +52,14 @@ struct SettingsView: View {
                         launchAtLogin = SMAppService.mainApp.status == .enabled
                     }
                 }
+
+            Toggle(isOn: $showMenuBarIcon) {
+                Text("Hiện icon trên thanh menu")
+                Text("Khi ẩn, phím tắt vẫn hoạt động. Mở lại SnipText từ Spotlight hoặc Finder để vào Cài đặt.")
+            }
         }
         .formStyle(.grouped)
-        .background(WindowReader { window in
-            Self.window = window
-            window.bringToFront()
-        })
         .frame(width: 460)
         .fixedSize()
-    }
-}
-
-/// Reports the window a SwiftUI view ends up in.
-private struct WindowReader: NSViewRepresentable {
-    let onAttach: (NSWindow) -> Void
-
-    func makeNSView(context: Context) -> NSView { ReaderView(onAttach: onAttach) }
-    func updateNSView(_ nsView: NSView, context: Context) {}
-
-    private final class ReaderView: NSView {
-        let onAttach: (NSWindow) -> Void
-
-        init(onAttach: @escaping (NSWindow) -> Void) {
-            self.onAttach = onAttach
-            super.init(frame: .zero)
-        }
-
-        @available(*, unavailable)
-        required init?(coder: NSCoder) { fatalError() }
-
-        override func viewDidMoveToWindow() {
-            super.viewDidMoveToWindow()
-            if let window { onAttach(window) }
-        }
     }
 }

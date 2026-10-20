@@ -10,6 +10,7 @@ extension KeyboardShortcuts.Name {
 enum PrefKey {
     static let lineBreakMode = "lineBreakMode"
     static let preferBarcode = "preferBarcode"
+    static let showMenuBarIcon = "showMenuBarIcon"
 }
 
 enum Preferences {

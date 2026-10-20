@@ -4,7 +4,10 @@ import SwiftUI
 
 @main
 struct SnipTextApp: App {
+    @NSApplicationDelegateAdaptor private var appDelegate: AppDelegate
     @State private var controller: AppController
+    /// Also turned off when the user ⌘-drags the icon out of the menu bar.
+    @AppStorage(PrefKey.showMenuBarIcon) private var showMenuBarIcon = true
 
     init() {
         // Child process spawned by Permissions.checkAccessInFreshProcess(): answer and quit
@@ -17,22 +20,26 @@ struct SnipTextApp: App {
     }
 
     var body: some Scene {
-        MenuBarExtra {
+        MenuBarExtra(isInserted: $showMenuBarIcon) {
             MenuContent(controller: controller)
         } label: {
             // Access only changes across a relaunch (see Permissions), so reading it here is enough.
             Image(nsImage: MenuBarIcon.image(needsAttention: !Permissions.hasScreenCaptureAccess))
         }
+    }
+}
 
-        Settings {
-            SettingsView()
-        }
+private final class AppDelegate: NSObject, NSApplicationDelegate {
+    /// Opening the app again (Spotlight, Finder) while it runs shows Settings; with the menu bar
+    /// icon hidden this is the only way back in.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        MainActor.assumeIsolated { SettingsWindow.show() }
+        return false
     }
 }
 
 private struct MenuContent: View {
     let controller: AppController
-    @Environment(\.openSettings) private var openSettings
 
     /// How many captures sit directly in the menu; the rest go under "Tất cả lịch sử".
     private static let recentCount = 3
@@ -68,12 +75,8 @@ private struct MenuContent: View {
             }
         }
 
-        Button("Cài đặt…") {
-            openSettings()
-            // On first open the window does not exist yet; SettingsView brings it front once attached.
-            SettingsView.window?.bringToFront()
-        }
-        .keyboardShortcut(",")
+        Button("Cài đặt…") { SettingsWindow.show() }
+            .keyboardShortcut(",")
 
         Button("Thoát SnipText") { NSApp.terminate(nil) }
             .keyboardShortcut("q")
