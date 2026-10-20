@@ -10,13 +10,12 @@ enum MenuBarIcon {
             guard let context = NSGraphicsContext.current else { return false }
             NSColor.black.set()
 
-            // The artwork below is laid out on 18×18 but runs to the edges; shrink and center it.
+            // The artwork below is laid out on 18×18 with the frame against the top-right; the
+            // small arrow leaves the lower-left mostly empty, so shift everything to the center.
             context.saveGraphicsState()
-            let fit = NSAffineTransform()
-            fit.translateX(by: 9, yBy: 9)
-            fit.scale(by: 0.9)
-            fit.translateX(by: -8.45, yBy: -9.4)
-            fit.concat()
+            let center = NSAffineTransform()
+            center.translateX(by: -1.4, yBy: 1.5)
+            center.concat()
 
             drawCorners(in: NSRect(x: 4.6, y: 1.6, width: 12.6, height: 11), arm: 3.2)
 
@@ -30,7 +29,8 @@ enum MenuBarIcon {
             lines.lineCapStyle = .round
             erase { lines.stroke() }
 
-            drawArrow(tip: NSPoint(x: 8.6, y: 8.4))
+            // Kept small so the text block, not the cursor, is what reads at menu bar size.
+            drawArrow(tip: NSPoint(x: 8.6, y: 8.4), scale: 0.58)
             context.restoreGraphicsState()
 
             if needsAttention {
@@ -65,7 +65,7 @@ enum MenuBarIcon {
     }
 
     /// An arrow cursor pointing up-right, with a thin gap cut around it like in the app icon.
-    private static func drawArrow(tip: NSPoint) {
+    private static func drawArrow(tip: NSPoint, scale: CGFloat) {
         let points: [NSPoint] = [
             NSPoint(x: 0, y: 0), NSPoint(x: 4.6, y: 8.2), NSPoint(x: 1.5, y: 7.0), NSPoint(x: 1.5, y: 11.2),
             NSPoint(x: -1.5, y: 11.2), NSPoint(x: -1.5, y: 7.0), NSPoint(x: -4.6, y: 8.2),
@@ -77,6 +77,7 @@ enum MenuBarIcon {
         path.lineJoinStyle = .round
         var transform = AffineTransform(translationByX: tip.x, byY: tip.y)
         transform.rotate(byDegrees: 42)
+        transform.scale(scale)
         path.transform(using: transform)
 
         path.lineWidth = 2.6
