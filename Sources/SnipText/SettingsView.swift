@@ -31,6 +31,22 @@ struct SettingsView: View {
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
 
     var body: some View {
+        VStack(spacing: 0) {
+            form
+            // The app has no main menu, so ⌘Q only works through this button.
+            HStack {
+                Spacer()
+                Button("Thoát SnipText") { NSApp.terminate(nil) }
+                    .keyboardShortcut("q")
+            }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 16)
+        }
+        .frame(width: 460)
+        .fixedSize()
+    }
+
+    private var form: some View {
         Form {
             KeyboardShortcuts.Recorder("Phím tắt chụp:", name: .capture)
 
@@ -54,15 +70,8 @@ struct SettingsView: View {
                 }
 
             Toggle("Hiện icon trên thanh menu", isOn: $showMenuBarIcon)
-
-            // The menu's Quit is gone with the icon, and the app has no main menu for ⌘Q.
-            if !showMenuBarIcon {
-                Button("Thoát SnipText") { NSApp.terminate(nil) }
-                    .keyboardShortcut("q")
-            }
         }
         .formStyle(.grouped)
-        .frame(width: 460)
-        .fixedSize()
+        .fixedSize(horizontal: false, vertical: true)
     }
 }
