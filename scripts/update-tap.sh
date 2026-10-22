@@ -34,9 +34,9 @@ cask "sniptext" do
   app "SnipText.app"
 
   # The app is not notarized; drop the quarantine flag so Gatekeeper does not block it.
-  postflight do
-    system_command "/usr/bin/xattr",
-                   args: ["-dr", "com.apple.quarantine", "#{appdir}/SnipText.app"]
+  postflight_steps do
+    run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "{{appdir}}/SnipText.app"],
+                          must_succeed: false
   end
 
   uninstall quit: "io.github.khduy.sniptext"
