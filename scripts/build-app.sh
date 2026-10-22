@@ -21,12 +21,21 @@ cd "$ROOT"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
+# Swift Build's generated `Bundle.module` finds package resource bundles in Contents/Resources.
+# The older native build system (the default in Xcode 16.4) only looks next to the .app and at
+# an absolute path on the build machine, so on any other Mac the app crashes when it opens
+# Settings or onboarding.
+SWIFT_BUILD_ARGS=()
+if swift build --help 2>&1 | grep -q "swiftbuild"; then
+  SWIFT_BUILD_ARGS=(--build-system swiftbuild)
+fi
+
 if [[ "${UNIVERSAL:-0}" == 1 ]]; then
   # One architecture at a time, then lipo. `--arch arm64 --arch x86_64` goes through Xcode's
   # build system, which with Xcode 16.4 (CI) fails to find the KeyboardShortcuts module.
   BINARIES=()
   for ARCH in arm64 x86_64; do
-    BUILD_ARGS=(-c "$CONFIG" --triple "$ARCH-apple-macosx15.0")
+    BUILD_ARGS=(-c "$CONFIG" --triple "$ARCH-apple-macosx15.0" "${SWIFT_BUILD_ARGS[@]}")
     swift build "${BUILD_ARGS[@]}"
     BIN_DIR=$(swift build "${BUILD_ARGS[@]}" --show-bin-path)
     # Copied out: newer toolchains put every triple in the same output folder.
@@ -36,9 +45,18 @@ if [[ "${UNIVERSAL:-0}" == 1 ]]; then
   done
   lipo -create "${BINARIES[@]}" -output "$APP/Contents/MacOS/SnipText"
 else
-  swift build -c "$CONFIG"
-  BIN_DIR=$(swift build -c "$CONFIG" --show-bin-path)
+  swift build -c "$CONFIG" "${SWIFT_BUILD_ARGS[@]}"
+  BIN_DIR=$(swift build -c "$CONFIG" "${SWIFT_BUILD_ARGS[@]}" --show-bin-path)
   cp "$BIN_DIR/SnipText" "$APP/Contents/MacOS/"
+fi
+
+# The native build system's accessor embeds the bundle's absolute build path; Swift Build's does not.
+if strings -a "$APP/Contents/MacOS/SnipText" | grep -q '/\.build/.*\.bundle$'; then
+  if [[ -n "${VERSION:-}" ]]; then
+    echo "error: built with a toolchain whose resource lookup fails outside this machine; use a toolchain with --build-system swiftbuild" >&2
+    exit 1
+  fi
+  echo "warning: this build only finds its resource bundles on this machine; build with a toolchain that has --build-system swiftbuild to distribute it"
 fi
 cp Resources/Info.plist "$APP/Contents/"
 cp Resources/AppIcon.icns "$APP/Contents/Resources/"

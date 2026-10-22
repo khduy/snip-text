@@ -11,6 +11,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # The newest stable Xcode on the runner, not the default 16.4: its Swift Build finds package
+      # resource bundles in Contents/Resources (see scripts/build-app.sh).
+      - name: Select Xcode
+        run: |
+          XCODE=$(ls -d /Applications/Xcode_*.app | grep -viE "beta|candidate" | sort -V | tail -1)
+          echo "DEVELOPER_DIR=$XCODE/Contents/Developer" >> "$GITHUB_ENV"
+          DEVELOPER_DIR="$XCODE/Contents/Developer" swift --version
+
       # OCR tests need Vision models that CI virtual machines may not provide.
       - name: Test
         run: swift test --skip OCRServiceTests
