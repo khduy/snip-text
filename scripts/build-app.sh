@@ -17,18 +17,29 @@ if [[ -z "${DEVELOPER_DIR:-}" && -d /Applications/Xcode.app ]]; then
   export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 fi
 
-BUILD_ARGS=(-c "$CONFIG")
-if [[ "${UNIVERSAL:-0}" == 1 ]]; then
-  BUILD_ARGS+=(--arch arm64 --arch x86_64)
-fi
-
 cd "$ROOT"
-swift build "${BUILD_ARGS[@]}"
-BIN_DIR=$(swift build "${BUILD_ARGS[@]}" --show-bin-path)
-
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-cp "$BIN_DIR/SnipText" "$APP/Contents/MacOS/"
+
+if [[ "${UNIVERSAL:-0}" == 1 ]]; then
+  # One architecture at a time, then lipo. `--arch arm64 --arch x86_64` goes through Xcode's
+  # build system, which with Xcode 16.4 (CI) fails to find the KeyboardShortcuts module.
+  BINARIES=()
+  for ARCH in arm64 x86_64; do
+    BUILD_ARGS=(-c "$CONFIG" --triple "$ARCH-apple-macosx15.0")
+    swift build "${BUILD_ARGS[@]}"
+    BIN_DIR=$(swift build "${BUILD_ARGS[@]}" --show-bin-path)
+    # Copied out: newer toolchains put every triple in the same output folder.
+    mkdir -p "$ROOT/build/$ARCH"
+    cp "$BIN_DIR/SnipText" "$ROOT/build/$ARCH/SnipText"
+    BINARIES+=("$ROOT/build/$ARCH/SnipText")
+  done
+  lipo -create "${BINARIES[@]}" -output "$APP/Contents/MacOS/SnipText"
+else
+  swift build -c "$CONFIG"
+  BIN_DIR=$(swift build -c "$CONFIG" --show-bin-path)
+  cp "$BIN_DIR/SnipText" "$APP/Contents/MacOS/"
+fi
 cp Resources/Info.plist "$APP/Contents/"
 cp Resources/AppIcon.icns "$APP/Contents/Resources/"
 for bundle in "$BIN_DIR"/*.bundle(N); do
