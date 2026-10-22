@@ -29,7 +29,7 @@ cask "sniptext" do
   desc "Menu bar OCR: select a screen region and copy its text"
   homepage "https://github.com/$REPO"
 
-  depends_on macos: ">= :sequoia"
+  depends_on macos: :sequoia
 
   app "SnipText.app"
 
