@@ -32,15 +32,8 @@ public enum OCRService {
         var request = RecognizeTextRequest()
         request.recognitionLevel = .accurate
         request.usesLanguageCorrection = true
-
-        // Hinting both languages beats automatic detection, which sometimes picks English
-        // for short Vietnamese text and drops every diacritic ("Bảo mật" -> "Bao mat").
-        let supported = Set(request.supportedRecognitionLanguages.map { $0.maximalIdentifier })
-        let wanted = ["vi-VT", "en-US"].map { Locale.Language(identifier: $0) }
-        let available = wanted.filter { supported.contains($0.maximalIdentifier) }
-        if !available.isEmpty {
-            request.recognitionLanguages = available
-        }
+        // Vision picks the language per image, among every one it supports.
+        request.automaticallyDetectsLanguage = true
 
         let observations = try await request.perform(on: image)
         return observations.compactMap { observation in
