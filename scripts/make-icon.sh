@@ -1,5 +1,5 @@
 #!/bin/zsh
-# Regenerates Resources/AppIcon.icns (and docs/icon.png) from scripts/icon-glyph.png via make-icon.swift.
+# Regenerates Resources/AppIcon.icns (and docs/icon.png) from scripts/make-icon.swift.
 set -euo pipefail
 
 ROOT=${0:A:h:h}
@@ -12,7 +12,7 @@ trap 'rm -rf "$TMP"' EXIT
 ICONSET="$TMP/AppIcon.iconset"
 mkdir -p "$ICONSET" "$ROOT/docs"
 
-swift "$ROOT/scripts/make-icon.swift" "$ROOT/scripts/icon-glyph.png" "$TMP/icon-1024.png"
+swift "$ROOT/scripts/make-icon.swift" "$TMP/icon-1024.png"
 
 for size in 16 32 128 256 512; do
   sips -z $size $size "$TMP/icon-1024.png" --out "$ICONSET/icon_${size}x${size}.png" >/dev/null
