@@ -22,3 +22,7 @@ jobs:
       # OCR tests need Vision models that CI virtual machines may not provide.
       - name: Test
         run: swift test --skip OCRServiceTests
+
+      # The release build, unsigned, so packaging problems show up before a tag is pushed.
+      - name: Build universal app
+        run: UNIVERSAL=1 VERSION=0.0.0 SIGN_IDENTITY=- scripts/build-app.sh release

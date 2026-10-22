@@ -30,24 +30,23 @@ if swift build --help 2>&1 | grep -q "swiftbuild"; then
   SWIFT_BUILD_ARGS=(--build-system swiftbuild)
 fi
 
+BUILD_ARGS=(-c "$CONFIG" "${SWIFT_BUILD_ARGS[@]}")
 if [[ "${UNIVERSAL:-0}" == 1 ]]; then
-  # One architecture at a time, then lipo. `--arch arm64 --arch x86_64` goes through Xcode's
-  # build system, which with Xcode 16.4 (CI) fails to find the KeyboardShortcuts module.
-  BINARIES=()
-  for ARCH in arm64 x86_64; do
-    BUILD_ARGS=(-c "$CONFIG" --triple "$ARCH-apple-macosx15.0" "${SWIFT_BUILD_ARGS[@]}")
-    swift build "${BUILD_ARGS[@]}"
-    BIN_DIR=$(swift build "${BUILD_ARGS[@]}" --show-bin-path)
-    # Copied out: newer toolchains put every triple in the same output folder.
-    mkdir -p "$ROOT/build/$ARCH"
-    cp "$BIN_DIR/SnipText" "$ROOT/build/$ARCH/SnipText"
-    BINARIES+=("$ROOT/build/$ARCH/SnipText")
-  done
-  lipo -create "${BINARIES[@]}" -output "$APP/Contents/MacOS/SnipText"
-else
-  swift build -c "$CONFIG" "${SWIFT_BUILD_ARGS[@]}"
-  BIN_DIR=$(swift build -c "$CONFIG" "${SWIFT_BUILD_ARGS[@]}" --show-bin-path)
-  cp "$BIN_DIR/SnipText" "$APP/Contents/MacOS/"
+  # Swift Build makes the fat binary itself. (Xcode 16.4's build system could not find the
+  # KeyboardShortcuts module this way, and building per `--triple` gave Swift 6.2 two x86_64 slices;
+  # a toolchain without Swift Build fails the resource check below anyway.)
+  BUILD_ARGS+=(--arch arm64 --arch x86_64)
+fi
+swift build "${BUILD_ARGS[@]}"
+BIN_DIR=$(swift build "${BUILD_ARGS[@]}" --show-bin-path)
+cp "$BIN_DIR/SnipText" "$APP/Contents/MacOS/"
+
+if [[ "${UNIVERSAL:-0}" == 1 ]]; then
+  ARCHS=$(lipo -archs "$APP/Contents/MacOS/SnipText")
+  if [[ " $ARCHS " != *" arm64 "* || " $ARCHS " != *" x86_64 "* ]]; then
+    echo "error: expected arm64 and x86_64, got: $ARCHS" >&2
+    exit 1
+  fi
 fi
 
 # The native build system's accessor embeds the bundle's absolute build path; Swift Build's does not.
