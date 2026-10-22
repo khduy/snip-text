@@ -65,8 +65,12 @@ if [[ " $* " == *" --print "* ]]; then
 fi
 
 CURRENT_SHA=$(gh api "repos/$TAP/contents/$CASK_PATH" --jq .sha 2>/dev/null || true)
+# An array: zsh would pass `${CURRENT_SHA:+-f sha=...}` as one argument, and an existing cask
+# can only be replaced when its sha is sent.
+SHA_ARGS=()
+[[ -n "$CURRENT_SHA" ]] && SHA_ARGS=(-f sha="$CURRENT_SHA")
 gh api -X PUT "repos/$TAP/contents/$CASK_PATH" \
   -f message="sniptext $VERSION" \
   -f content="$(print -r -- "$CASK" | base64)" \
-  ${CURRENT_SHA:+-f sha="$CURRENT_SHA"} \
+  "${SHA_ARGS[@]}" \
   --jq '.commit.html_url'
