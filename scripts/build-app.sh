@@ -51,7 +51,9 @@ else
 fi
 
 # The native build system's accessor embeds the bundle's absolute build path; Swift Build's does not.
-if strings -a "$APP/Contents/MacOS/SnipText" | grep -q '/\.build/.*\.bundle$'; then
+# Not `grep -q`: it stops at the first match, `strings` then dies of SIGPIPE, and with pipefail
+# the failed pipeline would read as "no match".
+if strings -a "$APP/Contents/MacOS/SnipText" | grep '/\.build/.*\.bundle$' >/dev/null; then
   if [[ -n "${VERSION:-}" ]]; then
     echo "error: built with a toolchain whose resource lookup fails outside this machine; use a toolchain with --build-system swiftbuild" >&2
     exit 1
