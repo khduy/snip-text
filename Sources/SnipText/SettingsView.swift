@@ -87,7 +87,9 @@ struct SettingsView: View {
             Section {
                 Toggle("Mở cùng macOS", isOn: Binding(
                     get: { loginStatus == .enabled || loginStatus == .requiresApproval },
-                    set: setLaunchAtLogin))
+                    // A closure, not the method itself: passing the method crashes Swift 6.1's
+                    // compiler (Xcode 16.4, used in CI) while emitting its @isolated(any) thunk.
+                    set: { enabled in setLaunchAtLogin(enabled) }))
                 if loginStatus == .requiresApproval {
                     warning("macOS cần bạn cho phép SnipText trong Mục đăng nhập.", action: "Mở Cài đặt") {
                         SMAppService.openSystemSettingsLoginItems()
