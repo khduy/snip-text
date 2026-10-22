@@ -65,6 +65,21 @@ for bundle in "$BIN_DIR"/*.bundle(N); do
   cp -R "$bundle" "$APP/Contents/Resources/"
 done
 
+# The dependencies' licenses (MIT) must ship with the binary that contains their code.
+ACKNOWLEDGEMENTS="$APP/Contents/Resources/Acknowledgements.txt"
+print "SnipText includes the following third-party software." > "$ACKNOWLEDGEMENTS"
+for (( i = 0; i < $(plutil -extract pins raw Package.resolved); i++ )); do
+  LOCATION=$(plutil -extract pins.$i.location raw Package.resolved)
+  NAME=${${LOCATION:t}%.git}
+  LICENSE_FILES=(.build/checkouts/$NAME/(LICENSE|License|license|LICENCE|Licence|licence)*(N.))
+  if (( ! $#LICENSE_FILES )); then
+    echo "error: no license file found for $NAME" >&2
+    exit 1
+  fi
+  print "\n\n$NAME\n$LOCATION\n" >> "$ACKNOWLEDGEMENTS"
+  cat "${LICENSE_FILES[1]}" >> "$ACKNOWLEDGEMENTS"
+done
+
 if [[ -n "${VERSION:-}" ]]; then
   /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" "$APP/Contents/Info.plist"
   /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $VERSION" "$APP/Contents/Info.plist"
