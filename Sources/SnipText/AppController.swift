@@ -34,8 +34,11 @@ final class AppController {
         Task {
             defer { isCapturing = false }
             do {
-                let snapshots = try await CaptureService.captureDisplays()
-                guard let image = await SelectionOverlay.selectRegion(from: snapshots) else { return }
+                var snapshots: [DisplaySnapshot]?
+                if Preferences.freezeScreen {
+                    snapshots = try await CaptureService.captureDisplays()
+                }
+                guard let image = try await SelectionOverlay.selectRegion(from: snapshots) else { return }
                 CaptureService.saveForDiagnostics(image)
                 let result = try await OCRService.recognize(image)
                 logger.notice("""

@@ -74,7 +74,7 @@ private struct MenuContent: View {
             Divider()
         }
 
-        Button("Lấy chữ từ màn hình") { controller.capture() }
+        Button("Snip Text") { controller.capture() }
             .globalKeyboardShortcut(.capture)
 
         // A titled Section draws a separator on each side itself, so no Divider goes next to it.

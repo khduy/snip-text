@@ -1,26 +1,40 @@
 import AppKit
 import SnipTextKit
 
-/// Full-screen region picker drawn over frozen snapshots of every display.
+/// Full-screen region picker. With `snapshots` it is drawn over frozen images of every display;
+/// without them the screen stays live under a dim layer and the region is captured after the drag.
 /// Drag to select, Esc or right-click to cancel.
 @MainActor
 final class SelectionOverlay {
+    /// A finished drag: the display it was on, and the region in points, origin top-left.
+    private struct Pick {
+        var displayID: CGDirectDisplayID
+        var rect: CGRect
+        var pointSize: CGSize
+    }
+
     private var windows: [OverlayWindow] = []
-    private var continuation: CheckedContinuation<CGImage?, Never>?
+    private var continuation: CheckedContinuation<Pick?, Never>?
     /// The app the user was working in; focus goes back to it when the overlay closes.
     private var previousApp: NSRunningApplication?
 
     private static var active: SelectionOverlay?
 
-    /// Returns the selected region cropped from the snapshot, or nil if cancelled.
-    static func selectRegion(from snapshots: [DisplaySnapshot]) async -> CGImage? {
+    /// Returns the selected region, or nil if cancelled.
+    static func selectRegion(from snapshots: [DisplaySnapshot]?) async throws -> CGImage? {
         let overlay = SelectionOverlay()
         active = overlay
-        defer { active = nil }
-        return await withCheckedContinuation { continuation in
+        let pick = await withCheckedContinuation { continuation in
             overlay.continuation = continuation
             overlay.show(snapshots)
         }
+        active = nil
+        guard let pick else { return nil }
+        if let snapshots {
+            guard let image = snapshots.first(where: { $0.displayID == pick.displayID })?.image else { return nil }
+            return CaptureService.crop(image, toPoints: pick.rect, pointSize: pick.pointSize)
+        }
+        return try await CaptureService.captureRegion(onDisplay: pick.displayID, rect: pick.rect)
     }
 
     /// Closes the open overlay as if the user pressed Esc (used by the self-test).
@@ -28,13 +42,19 @@ final class SelectionOverlay {
         active?.finish(with: nil)
     }
 
-    private func show(_ snapshots: [DisplaySnapshot]) {
+    private func show(_ snapshots: [DisplaySnapshot]?) {
         for screen in NSScreen.screens {
-            guard let id = screen.displayID,
-                  let snapshot = snapshots.first(where: { $0.displayID == id }) else { continue }
-            let view = SelectionView(image: snapshot.image)
-            view.onFinish = { [weak self] image in self?.finish(with: image) }
-            let window = OverlayWindow(screen: screen, view: view)
+            guard let id = screen.displayID else { continue }
+            var image: CGImage?
+            if let snapshots {
+                guard let snapshot = snapshots.first(where: { $0.displayID == id }) else { continue }
+                image = snapshot.image
+            }
+            let view = SelectionView(image: image)
+            view.onFinish = { [weak self] rect in
+                self?.finish(with: rect.map { Pick(displayID: id, rect: $0, pointSize: screen.frame.size) })
+            }
+            let window = OverlayWindow(screen: screen, view: view, transparent: image == nil)
             windows.append(window)
         }
         guard !windows.isEmpty else { return finish(with: nil) }
@@ -50,7 +70,7 @@ final class SelectionOverlay {
         NSCursor.crosshair.set()
     }
 
-    private func finish(with image: CGImage?) {
+    private func finish(with pick: Pick?) {
         windows.forEach { $0.orderOut(nil) }
         windows.removeAll()
         NSCursor.arrow.set()
@@ -58,18 +78,19 @@ final class SelectionOverlay {
             NSApp.yieldActivation(to: previousApp)
             previousApp.activate()
         }
-        continuation?.resume(returning: image)
+        continuation?.resume(returning: pick)
         continuation = nil
     }
 }
 
 private final class OverlayWindow: NSWindow {
-    init(screen: NSScreen, view: NSView) {
+    init(screen: NSScreen, view: NSView, transparent: Bool) {
         super.init(contentRect: screen.frame, styleMask: .borderless, backing: .buffered, defer: false)
         setFrame(screen.frame, display: false)
         level = .screenSaver
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
-        isOpaque = true
+        isOpaque = !transparent
+        backgroundColor = transparent ? .clear : .black
         hasShadow = false
         isReleasedWhenClosed = false
         acceptsMouseMovedEvents = true
@@ -80,13 +101,15 @@ private final class OverlayWindow: NSWindow {
 }
 
 final class SelectionView: NSView {
-    var onFinish: ((CGImage?) -> Void)?
+    /// Called with the selected rect in points (origin top-left), or nil when cancelled.
+    var onFinish: ((CGRect?) -> Void)?
 
-    private let image: CGImage
+    /// The frozen frame to draw; nil draws nothing, so the live screen shows through.
+    private let image: CGImage?
     private var dragStart: NSPoint?
     private var selection: NSRect?
 
-    init(image: CGImage) {
+    init(image: CGImage?) {
         self.image = image
         super.init(frame: .zero)
     }
@@ -136,7 +159,7 @@ final class SelectionView: NSView {
         }
         let topLeft = CGRect(x: selection.minX, y: bounds.height - selection.maxY,
                              width: selection.width, height: selection.height)
-        onFinish?(CaptureService.crop(image, toPoints: topLeft, pointSize: bounds.size))
+        onFinish?(topLeft)
     }
 
     override func rightMouseDown(with event: NSEvent) { onFinish?(nil) }
@@ -153,7 +176,9 @@ final class SelectionView: NSView {
 
     override func draw(_ dirtyRect: NSRect) {
         guard let context = NSGraphicsContext.current?.cgContext else { return }
-        context.draw(image, in: bounds)
+        if let image {
+            context.draw(image, in: bounds)
+        }
 
         // Dim everything outside the selection.
         let dim = CGMutablePath()

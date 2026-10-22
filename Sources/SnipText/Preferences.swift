@@ -11,6 +11,7 @@ enum PrefKey {
     static let lineBreakMode = "lineBreakMode"
     static let preferBarcode = "preferBarcode"
     static let showMenuBarIcon = "showMenuBarIcon"
+    static let freezeScreen = "freezeScreen"
 }
 
 extension UserDefaults {
@@ -27,6 +28,12 @@ enum Preferences {
 
     static var preferBarcode: Bool {
         UserDefaults.standard.bool(forKey: PrefKey.preferBarcode)
+    }
+
+    /// On: the selection is drawn over a snapshot taken when the hotkey is pressed.
+    /// Off: the screen stays live under the overlay and the region is captured after the drag.
+    static var freezeScreen: Bool {
+        UserDefaults.standard.bool(forKey: PrefKey.freezeScreen)
     }
 }
 

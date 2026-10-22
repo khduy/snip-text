@@ -87,7 +87,7 @@ enum SelfTest {
                     report.append("during: \(NSWorkspace.shared.frontmostApplication?.localizedName ?? "nil")")
                     SelectionOverlay.cancelActive()
                 }
-                _ = await SelectionOverlay.selectRegion(from: snapshots)
+                _ = try await SelectionOverlay.selectRegion(from: snapshots)
                 try? await Task.sleep(for: .milliseconds(500))
                 let after = NSWorkspace.shared.frontmostApplication
                 report.append("after: \(after?.localizedName ?? "nil")")

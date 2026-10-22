@@ -28,6 +28,7 @@ struct SettingsView: View {
     @AppStorage(PrefKey.showMenuBarIcon) private var showMenuBarIcon = true
     @AppStorage(PrefKey.lineBreakMode) private var lineBreakMode = LineBreakMode.keepLines
     @AppStorage(PrefKey.preferBarcode) private var preferBarcode = false
+    @AppStorage(PrefKey.freezeScreen) private var freezeScreen = false
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
 
     var body: some View {
@@ -55,6 +56,8 @@ struct SettingsView: View {
             }
 
             Toggle("Ưu tiên copy mã QR khi vùng chọn có cả chữ và mã", isOn: $preferBarcode)
+
+            Toggle("Đóng băng màn hình khi chụp", isOn: $freezeScreen)
 
             Toggle("Mở cùng macOS", isOn: $launchAtLogin)
                 .onChange(of: launchAtLogin) { _, enabled in

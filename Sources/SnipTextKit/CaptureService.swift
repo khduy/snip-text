@@ -37,6 +37,25 @@ public enum CaptureService {
         return snapshots
     }
 
+    /// Captures one region, given in points with origin top-left within a display, as it looks now.
+    /// Used when the screen is not frozen; SnipText's own windows (the overlay) are left out.
+    public static func captureRegion(onDisplay displayID: CGDirectDisplayID, rect: CGRect) async throws -> CGImage? {
+        let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
+        guard let display = content.displays.first(where: { $0.displayID == displayID }) else { return nil }
+        let ownApp = content.applications.filter { $0.processID == ProcessInfo.processInfo.processIdentifier }
+
+        let filter = SCContentFilter(display: display, excludingApplications: ownApp, exceptingWindows: [])
+        let configuration = SCStreamConfiguration()
+        let scale = CGFloat(filter.pointPixelScale)
+        configuration.sourceRect = rect
+        configuration.width = Int(rect.width * scale)
+        configuration.height = Int(rect.height * scale)
+        configuration.showsCursor = false
+        configuration.captureResolution = .best
+
+        return try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: configuration)
+    }
+
     /// Crops a region given in points (origin top-left) out of a snapshot.
     public static func crop(_ image: CGImage, toPoints rect: CGRect, pointSize: CGSize) -> CGImage? {
         let scale = CGFloat(image.width) / pointSize.width
