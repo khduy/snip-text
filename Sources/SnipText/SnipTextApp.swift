@@ -73,6 +73,14 @@ private struct MenuContent: View {
             }
             Divider()
         }
+        if HotkeyStatus.shared.isTaken {
+            Button {
+                SettingsWindow.show()
+            } label: {
+                Label("Phím tắt bị trùng, đổi trong Cài đặt…", systemImage: "keyboard.badge.exclamationmark")
+            }
+            Divider()
+        }
 
         Button("Snip Text") { controller.capture() }
             .globalKeyboardShortcut(.capture)
@@ -88,9 +96,9 @@ private struct MenuContent: View {
                         .keyboardShortcut(KeyEquivalent(Character(String(index + 1))), modifiers: .command)
                 }
                 Menu("Tất cả lịch sử") {
-                    ForEach(items.prefix(20)) { historyButton($0) }
+                    ForEach(items) { historyButton($0) }
                     Divider()
-                    Button("Xoá lịch sử") { controller.history.clear() }
+                    Button("Xoá lịch sử") { controller.clearHistory() }
                 }
             }
         }
@@ -108,7 +116,7 @@ private struct MenuContent: View {
             controller.copy(item)
         } label: {
             Label(TextFormatter.snippet(item.primaryContent, limit: 44),
-                  systemImage: item.text.isEmpty ? "qrcode" : "text.alignleft")
+                  systemImage: item.isBarcode ? "qrcode" : "text.alignleft")
         }
     }
 }

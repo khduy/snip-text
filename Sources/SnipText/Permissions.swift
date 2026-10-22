@@ -86,16 +86,38 @@ enum Permissions {
 
     /// Removes this app's (possibly stale) Screen Recording entry, then relaunches into the
     /// permission step, where macOS can prompt again and the user can switch it on.
-    static func resetPermission() {
+    /// If tccutil fails, says so and stays put: a relaunch would land on the same stale entry.
+    static func resetPermission() async {
         guard let bundleID = Bundle.main.bundleIdentifier else { return }
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/tccutil")
         process.arguments = ["reset", "ScreenCapture", bundleID]
-        if (try? process.run()) != nil {
-            process.waitUntilExit()
-            if process.terminationStatus == 0 { hasPromptedForAccess = false }
+        let status: Int32? = await withCheckedContinuation { continuation in
+            process.terminationHandler = { continuation.resume(returning: $0.terminationStatus) }
+            do {
+                try process.run()
+            } catch {
+                continuation.resume(returning: nil)
+            }
         }
+        guard status == 0 else {
+            showResetFailedAlert()
+            return
+        }
+        hasPromptedForAccess = false
         relaunch(arguments: [OnboardingWindow.permissionStepArgument])
+    }
+
+    private static func showResetFailedAlert() {
+        NSApp.activate()
+        let alert = NSAlert()
+        alert.messageText = "Không đặt lại được quyền"
+        alert.informativeText = """
+            Hãy mở Cài đặt hệ thống › Quyền riêng tư & Bảo mật › Ghi màn hình, xoá SnipText khỏi \
+            danh sách bằng nút "−", rồi mở lại SnipText.
+            """
+        alert.addButton(withTitle: "OK")
+        alert.runModal()
     }
 
     static func relaunch(arguments extraArguments: [String] = []) {

@@ -12,6 +12,8 @@ enum PrefKey {
     static let preferBarcode = "preferBarcode"
     static let showMenuBarIcon = "showMenuBarIcon"
     static let freezeScreen = "freezeScreen"
+    /// No UI: `defaults write io.github.khduy.sniptext saveLastCapture -bool true`.
+    static let saveLastCapture = "saveLastCapture"
 }
 
 extension UserDefaults {
@@ -34,6 +36,11 @@ enum Preferences {
     /// Off: the screen stays live under the overlay and the region is captured after the drag.
     static var freezeScreen: Bool {
         UserDefaults.standard.bool(forKey: PrefKey.freezeScreen)
+    }
+
+    /// Off by default: the image can hold anything that was on screen.
+    static var saveLastCapture: Bool {
+        UserDefaults.standard.bool(forKey: PrefKey.saveLastCapture)
     }
 }
 

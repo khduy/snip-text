@@ -17,6 +17,7 @@ final class SelectionOverlay {
     private var continuation: CheckedContinuation<Pick?, Never>?
     /// The app the user was working in; focus goes back to it when the overlay closes.
     private var previousApp: NSRunningApplication?
+    private var screenObserver: NSObjectProtocol?
 
     private static var active: SelectionOverlay?
 
@@ -59,6 +60,14 @@ final class SelectionOverlay {
         }
         guard !windows.isEmpty else { return finish(with: nil) }
 
+        // A display added, removed or rearranged leaves the overlay windows (and any snapshot)
+        // out of step with the screens, so cancel and let the user start again.
+        screenObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.finish(with: nil) }
+        }
+
         // The overlay must be active to receive Esc, which takes focus from the user's app.
         let frontmost = NSWorkspace.shared.frontmostApplication
         previousApp = frontmost == .current ? nil : frontmost
@@ -71,6 +80,10 @@ final class SelectionOverlay {
     }
 
     private func finish(with pick: Pick?) {
+        if let screenObserver {
+            NotificationCenter.default.removeObserver(screenObserver)
+            self.screenObserver = nil
+        }
         windows.forEach { $0.orderOut(nil) }
         windows.removeAll()
         NSCursor.arrow.set()

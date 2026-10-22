@@ -29,7 +29,10 @@ struct SettingsView: View {
     @AppStorage(PrefKey.lineBreakMode) private var lineBreakMode = LineBreakMode.keepLines
     @AppStorage(PrefKey.preferBarcode) private var preferBarcode = false
     @AppStorage(PrefKey.freezeScreen) private var freezeScreen = false
-    @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
+    /// Read again whenever the window comes forward: the user can switch it off in
+    /// System Settings while this window stays open in the background.
+    @State private var loginStatus = SMAppService.mainApp.status
+    @State private var loginError: String?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -45,11 +48,19 @@ struct SettingsView: View {
         }
         .frame(width: 460)
         .fixedSize()
+        .onReceive(NotificationCenter.default.publisher(for: NSWindow.didBecomeKeyNotification)) { _ in
+            loginStatus = SMAppService.mainApp.status
+            HotkeyStatus.shared.refresh()
+        }
     }
 
     private var form: some View {
         Form {
             KeyboardShortcuts.Recorder("Phím tắt chụp:", name: .capture)
+            if HotkeyStatus.shared.isTaken {
+                warning("Phím tắt này đang bị app khác dùng. Chọn phím khác, hoặc thoát app kia rồi",
+                        action: "Thử lại") { HotkeyStatus.shared.refresh() }
+            }
 
             Picker("Xuống dòng:", selection: $lineBreakMode) {
                 ForEach(LineBreakMode.allCases) { Text($0.title).tag($0) }
@@ -59,22 +70,46 @@ struct SettingsView: View {
 
             Toggle("Đóng băng màn hình khi chụp", isOn: $freezeScreen)
 
-            Toggle("Mở cùng macOS", isOn: $launchAtLogin)
-                .onChange(of: launchAtLogin) { _, enabled in
-                    do {
-                        if enabled {
-                            try SMAppService.mainApp.register()
-                        } else {
-                            try SMAppService.mainApp.unregister()
-                        }
-                    } catch {
-                        launchAtLogin = SMAppService.mainApp.status == .enabled
-                    }
+            Toggle("Mở cùng macOS", isOn: Binding(
+                get: { loginStatus == .enabled || loginStatus == .requiresApproval },
+                set: setLaunchAtLogin))
+            if loginStatus == .requiresApproval {
+                warning("macOS cần bạn cho phép SnipText trong Mục đăng nhập.", action: "Mở Cài đặt") {
+                    SMAppService.openSystemSettingsLoginItems()
                 }
+            } else if let loginError {
+                warning(loginError)
+            }
 
             Toggle("Hiện icon trên thanh menu", isOn: $showMenuBarIcon)
         }
         .formStyle(.grouped)
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private func setLaunchAtLogin(_ enabled: Bool) {
+        do {
+            if enabled {
+                try SMAppService.mainApp.register()
+            } else {
+                try SMAppService.mainApp.unregister()
+            }
+            loginError = nil
+        } catch {
+            loginError = "Không đổi được: \(error.localizedDescription)"
+        }
+        loginStatus = SMAppService.mainApp.status
+    }
+
+    private func warning(_ message: String, action: String? = nil, perform: @escaping () -> Void = {}) -> some View {
+        HStack(spacing: 4) {
+            Label(message, systemImage: "exclamationmark.triangle.fill")
+            if let action {
+                Button(action, action: perform).buttonStyle(.link)
+            }
+        }
+        .font(.footnote)
+        .foregroundStyle(.secondary)
         .fixedSize(horizontal: false, vertical: true)
     }
 }

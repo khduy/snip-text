@@ -57,8 +57,15 @@ open build/SnipText.app --args --self-test
 cat ~/Library/Caches/SnipText/self-test.txt
 ```
 
-App tự chụp màn hình chính bằng ScreenCaptureKit, OCR dải menu bar, ghi kết quả ra file rồi thoát. Ảnh vùng
-chọn gần nhất được lưu ở `~/Library/Caches/SnipText/last-capture.png`.
+App tự chụp màn hình chính bằng ScreenCaptureKit, OCR dải menu bar, ghi kết quả ra file rồi thoát.
+
+Để xem ảnh mà OCR nhận được, bật lưu ảnh vùng chọn gần nhất (mặc định tắt, vì ảnh có thể chứa bất cứ gì trên màn
+hình; "Xoá lịch sử" cũng xoá ảnh này):
+
+```bash
+defaults write io.github.khduy.sniptext saveLastCapture -bool true
+open ~/Library/Caches/SnipText/last-capture.png
+```
 
 Xuất ảnh giao diện khung chọn và onboarding (dùng nội dung giả, không cần quyền) để xem nhanh:
 

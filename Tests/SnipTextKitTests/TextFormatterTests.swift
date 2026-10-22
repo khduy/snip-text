@@ -56,4 +56,9 @@ private func line(_ text: String, row: Double, x: Double = 0.05, width: Double =
         #expect(TextFormatter.snippet("abcdefghij", limit: 5) == "abcd…")
         #expect(TextFormatter.snippet("abcde", limit: 5) == "abcde")
     }
+
+    @Test func snippetWithNonPositiveLimitIsEmpty() {
+        #expect(TextFormatter.snippet("abc", limit: 0) == "")
+        #expect(TextFormatter.snippet("abc", limit: -3) == "")
+    }
 }

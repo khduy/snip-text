@@ -16,6 +16,7 @@ final class AppController {
         KeyboardShortcuts.onKeyUp(for: .capture) { [weak self] in
             self?.capture()
         }
+        HotkeyStatus.shared.refresh()
         Task.detached(priority: .utility) { await OCRService.warmUp() }
 
         if SelfTest.isRequested {
@@ -23,6 +24,14 @@ final class AppController {
         } else {
             OnboardingWindow.onTryNow = { [weak self] in self?.capture() }
             OnboardingWindow.showIfNeeded()
+            if HotkeyStatus.shared.isTaken {
+                // After launch finishes, so the HUD is not shown before the app is up.
+                Task {
+                    HUDPanel.shared.show("Phím tắt đang bị app khác dùng",
+                                         detail: "Đổi phím tắt trong Cài đặt SnipText.",
+                                         symbol: "keyboard.badge.exclamationmark")
+                }
+            }
         }
     }
 
@@ -39,13 +48,19 @@ final class AppController {
                     snapshots = try await CaptureService.captureDisplays()
                 }
                 guard let image = try await SelectionOverlay.selectRegion(from: snapshots) else { return }
-                CaptureService.saveForDiagnostics(image)
+                if Preferences.saveLastCapture {
+                    CaptureService.saveForDiagnostics(image)
+                }
                 let result = try await OCRService.recognize(image)
                 logger.notice("""
                     captured \(image.width)x\(image.height), \
                     \(result.fragments.count) text fragments, \(result.barcodes.count) barcodes
                     """)
                 handle(result)
+            } catch CaptureError.displayUnavailable {
+                HUDPanel.shared.show("Màn hình vừa bị ngắt kết nối",
+                                     detail: "Chọn lại vùng trên màn hình đang dùng.",
+                                     symbol: "display.trianglebadge.exclamationmark")
             } catch {
                 logger.error("capture failed: \(error)")
                 HUDPanel.shared.show("Không chụp được màn hình",
@@ -63,7 +78,13 @@ final class AppController {
     /// Copies a history item, with the same confirmation as a fresh capture.
     func copy(_ item: HistoryItem) {
         copy(item.primaryContent)
-        showCopied(item.primaryContent, isBarcode: item.text.isEmpty)
+        showCopied(item.primaryContent, isBarcode: item.isBarcode)
+    }
+
+    /// Also deletes the saved diagnostic capture, which can show the same content.
+    func clearHistory() {
+        history.clear()
+        CaptureService.deleteDiagnostics()
     }
 
     private func handle(_ result: OCRResult) {
@@ -73,28 +94,28 @@ final class AppController {
         switch (text.isEmpty, barcodes.isEmpty) {
         case (true, true):
             HUDPanel.shared.show("Không thấy chữ trong vùng này", symbol: "text.magnifyingglass")
-            return
-        case (true, false):
-            copy(barcodes)
-            showCopied(barcodes, isBarcode: true)
-        case (false, true):
-            copy(text)
-            showCopied(text, isBarcode: false)
-        case (false, false) where Preferences.preferBarcode:
-            copy(barcodes)
-            showCopied(barcodes, isBarcode: true, alternative: ("Copy chữ", { [weak self] in
-                self?.copy(text)
-                self?.showCopied(text, isBarcode: false)
-            }))
+        case (true, false), (false, true):
+            copy(HistoryItem(text: text, barcodes: result.barcodes), offeringAlternative: false)
         case (false, false):
-            copy(text)
-            showCopied(text, isBarcode: false, alternative: ("Copy mã QR", { [weak self] in
-                self?.copy(barcodes)
-                self?.showCopied(barcodes, isBarcode: true)
-            }))
+            copy(HistoryItem(text: text, barcodes: result.barcodes, prefersBarcode: Preferences.preferBarcode),
+                 offeringAlternative: true)
         }
+    }
 
-        history.add(HistoryItem(text: text, barcodes: result.barcodes))
+    /// Copies a fresh capture and records it in history. With both text and a barcode, the HUD
+    /// offers the other one; taking it updates the history entry, so history copies that instead.
+    private func copy(_ item: HistoryItem, offeringAlternative: Bool) {
+        history.add(item)
+        copy(item.primaryContent)
+        var alternative: HUDPanel.Action?
+        if offeringAlternative {
+            var other = item
+            other.prefersBarcode.toggle()
+            alternative = (other.isBarcode ? "Copy mã QR" : "Copy chữ", { [weak self] in
+                self?.copy(other, offeringAlternative: false)
+            })
+        }
+        showCopied(item.primaryContent, isBarcode: item.isBarcode, alternative: alternative)
     }
 
     /// Shows what landed on the clipboard, so a bad read is noticed before it is pasted.

@@ -11,15 +11,21 @@ jobs:
   release:
     runs-on: macos-15
     env:
-      # Without these secrets the build falls back to ad-hoc signing.
       HAS_SIGNING_CERT: ${{ secrets.SIGNING_CERT_P12 != '' }}
       # Fine-grained token with "Contents: read and write" on khduy/homebrew-tap.
       HAS_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN != '' }}
     steps:
       - uses: actions/checkout@v4
 
+      # An ad-hoc signed release would make macOS forget every user's Screen Recording
+      # permission on update, so a release without the certificate is refused.
+      - name: Require signing certificate
+        if: env.HAS_SIGNING_CERT != 'true'
+        run: |
+          echo "::error::SIGNING_CERT_P12 is not set; refusing to publish an ad-hoc signed release."
+          exit 1
+
       - name: Import signing certificate
-        if: env.HAS_SIGNING_CERT == 'true'
         env:
           SIGNING_CERT_P12: ${{ secrets.SIGNING_CERT_P12 }}
           SIGNING_CERT_PASSWORD: ${{ secrets.SIGNING_CERT_PASSWORD }}

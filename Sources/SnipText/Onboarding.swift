@@ -81,9 +81,12 @@ final class OnboardingModel {
         }
     }
 
+    /// Also closes PermissionFlow's floating panel, so going Back or closing the window
+    /// does not leave it tracking System Settings.
     func stopWatchingPermission() {
         watchTask?.cancel()
         watchTask = nil
+        Permissions.closePermissionPanel()
     }
 }
 
@@ -95,6 +98,7 @@ enum OnboardingWindow {
 
     private static var window: NSWindow?
     private static var model: OnboardingModel?
+    private static var closeObserver: NSObjectProtocol?
     static var onTryNow: () -> Void = {}
 
     static var isCompleted: Bool {
@@ -129,13 +133,18 @@ enum OnboardingWindow {
         window.isReleasedWhenClosed = false
         window.center()
 
-        model.onClose = { window.close() }
+        // Weak: the window owns the model through its hosting controller.
+        model.onClose = { [weak window] in window?.close() }
         model.onTryNow = { onTryNow() }
-        NotificationCenter.default.addObserver(
+        closeObserver = NotificationCenter.default.addObserver(
             forName: NSWindow.willCloseNotification, object: window, queue: .main
         ) { _ in
             MainActor.assumeIsolated {
                 Self.model?.stopWatchingPermission()
+                if let closeObserver = Self.closeObserver {
+                    NotificationCenter.default.removeObserver(closeObserver)
+                }
+                Self.closeObserver = nil
                 Self.window = nil
                 Self.model = nil
             }
@@ -266,7 +275,7 @@ private struct PermissionStep: View {
 
             HStack(spacing: 4) {
                 Text("Đã bật mà không nhận?")
-                Button("Đặt lại quyền") { Permissions.resetPermission() }
+                Button("Đặt lại quyền") { Task { await Permissions.resetPermission() } }
                     .buttonStyle(.link)
             }
             .font(.footnote)

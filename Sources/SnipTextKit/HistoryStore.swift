@@ -6,15 +6,33 @@ public struct HistoryItem: Codable, Identifiable, Equatable, Sendable {
     public var date = Date()
     public var text: String
     public var barcodes: [String]
+    /// The barcode, not the text, was what landed on the clipboard; picking the item
+    /// from history copies the same thing again.
+    public var prefersBarcode: Bool
 
-    public init(text: String, barcodes: [String]) {
+    public init(text: String, barcodes: [String], prefersBarcode: Bool = false) {
         self.text = text
         self.barcodes = barcodes
+        self.prefersBarcode = prefersBarcode
+    }
+
+    /// History saved before `prefersBarcode` existed has no such key.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        date = try container.decode(Date.self, forKey: .date)
+        text = try container.decode(String.self, forKey: .text)
+        barcodes = try container.decode([String].self, forKey: .barcodes)
+        prefersBarcode = try container.decodeIfPresent(Bool.self, forKey: .prefersBarcode) ?? false
+    }
+
+    public var isBarcode: Bool {
+        text.isEmpty || (prefersBarcode && !barcodes.isEmpty)
     }
 
     /// What gets copied when the item is picked from the history menu.
     public var primaryContent: String {
-        text.isEmpty ? barcodes.joined(separator: "\n") : text
+        isBarcode ? barcodes.joined(separator: "\n") : text
     }
 }
 
@@ -28,7 +46,7 @@ public final class HistoryStore {
 
     public init(fileURL: URL = HistoryStore.defaultFileURL, limit: Int = 50) {
         self.fileURL = fileURL
-        self.limit = limit
+        self.limit = max(limit, 0)
         load()
     }
 

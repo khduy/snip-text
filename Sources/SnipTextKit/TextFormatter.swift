@@ -25,6 +25,7 @@ public enum TextFormatter {
     /// A one-line preview for menus and toasts: whitespace runs (line breaks included)
     /// collapse to one space, and anything past `limit` characters becomes "…".
     public static func snippet(_ text: String, limit: Int) -> String {
+        guard limit > 0 else { return "" }
         let flat = text.split(whereSeparator: \.isWhitespace).joined(separator: " ")
         return flat.count > limit ? flat.prefix(limit - 1) + "…" : flat
     }

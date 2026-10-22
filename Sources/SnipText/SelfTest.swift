@@ -59,7 +59,7 @@ enum SelfTest {
                    let strip = CaptureService.crop(
                        snapshot.image, toPoints: CGRect(x: 0, y: 0, width: screen.frame.width, height: 40),
                        pointSize: screen.frame.size) {
-                    CaptureService.saveForDiagnostics(strip)
+                    await CaptureService.saveForDiagnostics(strip).value
                     let result = try await OCRService.recognize(strip)
                     report.append("displays: \(snapshots.count), snapshot: \(snapshot.image.width)x\(snapshot.image.height)")
                     report.append("strip: \(strip.width)x\(strip.height)")
