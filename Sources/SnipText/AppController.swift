@@ -51,7 +51,8 @@ final class AppController {
                 if Preferences.saveLastCapture {
                     CaptureService.saveForDiagnostics(image)
                 }
-                let result = try await OCRService.recognize(image)
+                let result = try await OCRService.recognize(
+                    image, correctsLanguage: Preferences.lineBreakMode != .preserveIndent)
                 logger.notice("""
                     captured \(image.width)x\(image.height), \
                     \(result.fragments.count) text fragments, \(result.barcodes.count) barcodes
@@ -88,24 +89,21 @@ final class AppController {
     }
 
     private func handle(_ result: OCRResult) {
-        let text = result.text(mode: Preferences.lineBreakMode)
-        let barcodes = result.barcodes.joined(separator: "\n")
-
-        switch (text.isEmpty, barcodes.isEmpty) {
-        case (true, true):
+        guard let (item, offersAlternative) = result.clipboardItem(
+            mode: Preferences.lineBreakMode, preferBarcode: Preferences.preferBarcode)
+        else {
             HUDPanel.shared.show("Không thấy chữ trong vùng này", symbol: "text.magnifyingglass")
-        case (true, false), (false, true):
-            copy(HistoryItem(text: text, barcodes: result.barcodes), offeringAlternative: false)
-        case (false, false):
-            copy(HistoryItem(text: text, barcodes: result.barcodes, prefersBarcode: Preferences.preferBarcode),
-                 offeringAlternative: true)
+            return
         }
+        copy(item, offeringAlternative: offersAlternative)
     }
 
     /// Copies a fresh capture and records it in history. With both text and a barcode, the HUD
     /// offers the other one; taking it updates the history entry, so history copies that instead.
     private func copy(_ item: HistoryItem, offeringAlternative: Bool) {
-        history.add(item)
+        if Preferences.saveHistory {
+            history.add(item)
+        }
         copy(item.primaryContent)
         var alternative: HUDPanel.Action?
         if offeringAlternative {

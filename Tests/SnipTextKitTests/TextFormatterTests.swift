@@ -43,6 +43,44 @@ private func line(_ text: String, row: Double, x: Double = 0.05, width: Double =
         #expect(TextFormatter.format(fragments, mode: .mergeParagraphs) == "COVID- 19 era")
     }
 
+    @Test func separatesTableColumnsWithTab() {
+        let fragments = [
+            line("Tên", row: 0, x: 0.05, width: 0.06), line("Giá", row: 0, x: 0.5, width: 0.06),
+            line("Cà phê", row: 1, x: 0.05, width: 0.12), line("25.000", row: 1, x: 0.5, width: 0.12),
+        ]
+        #expect(TextFormatter.format(fragments, mode: .keepLines) == "Tên\tGiá\nCà phê\t25.000")
+    }
+
+    @Test func keepsListItemsOnTheirOwnLines() {
+        let fragments = [
+            line("Cần làm:", row: 0), line("• gọi điện", row: 1), line("• gửi báo giá cho", row: 2),
+            line("khách hàng", row: 3), line("2. họp nhóm", row: 4), line("- dọn bàn", row: 5),
+        ]
+        #expect(TextFormatter.format(fragments, mode: .mergeParagraphs)
+            == "Cần làm:\n• gọi điện\n• gửi báo giá cho khách hàng\n2. họp nhóm\n- dọn bàn")
+    }
+
+    @Test func rebuildsIndentationForCode() {
+        // 0.02 per character: "func run() {" is 12 characters wide.
+        let fragments = [
+            line("func run() {", row: 0, x: 0.05, width: 0.24),
+            line("let x = 1", row: 1, x: 0.13, width: 0.18),
+            line("if x > 0 {", row: 2, x: 0.13, width: 0.20),
+            line("go()", row: 3, x: 0.21, width: 0.08),
+            line("// done", row: 3, x: 0.35, width: 0.14),
+            line("}", row: 4, x: 0.13, width: 0.02),
+            line("}", row: 5, x: 0.05, width: 0.02),
+        ]
+        #expect(TextFormatter.format(fragments, mode: .preserveIndent) == """
+            func run() {
+                let x = 1
+                if x > 0 {
+                    go()   // done
+                }
+            }
+            """)
+    }
+
     @Test func emptyInputGivesEmptyString() {
         #expect(TextFormatter.format([], mode: .mergeParagraphs) == "")
         #expect(TextFormatter.format([line("   ", row: 0)], mode: .keepLines) == "")

@@ -45,6 +45,45 @@ import Testing
         #expect(items[0].primaryContent == "a")
     }
 
+    @Test func movesUnreadableFileAsideInsteadOfOverwriting() throws {
+        try FileManager.default.createDirectory(
+            at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data("not json".utf8).write(to: fileURL)
+
+        let store = HistoryStore(fileURL: fileURL)
+        #expect(store.items.isEmpty)
+        store.add(HistoryItem(text: "mới", barcodes: []))
+
+        #expect(try String(contentsOf: store.unreadableFileURL, encoding: .utf8) == "not json")
+        #expect(HistoryStore(fileURL: fileURL).items.map(\.text) == ["mới"])
+    }
+
+    @Test func clearRemovesUnreadableFileEvenWithNoItems() throws {
+        try FileManager.default.createDirectory(
+            at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data("not json".utf8).write(to: fileURL)
+
+        let store = HistoryStore(fileURL: fileURL)
+        #expect(store.items.isEmpty && store.hasUnreadableFile)
+        #expect(HistoryStore(fileURL: fileURL).hasUnreadableFile)
+        store.clear()
+        #expect(!store.hasUnreadableFile)
+        #expect(!FileManager.default.fileExists(atPath: store.unreadableFileURL.path))
+    }
+
+    @Test func failedDeleteKeepsUnreadableFileFlagged() throws {
+        let directory = fileURL.deletingLastPathComponent()
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        try Data("not json".utf8).write(to: fileURL)
+        let store = HistoryStore(fileURL: fileURL)
+
+        // A read-only folder: nothing in it can be deleted.
+        try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: directory.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: directory.path) }
+        store.clear()
+        #expect(store.hasUnreadableFile)
+    }
+
     @Test func nonPositiveLimitKeepsNothing() {
         let store = HistoryStore(fileURL: fileURL, limit: -1)
         store.add(HistoryItem(text: "x", barcodes: []))

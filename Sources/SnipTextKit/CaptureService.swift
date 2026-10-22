@@ -11,6 +11,13 @@ public struct DisplaySnapshot: @unchecked Sendable {
     public var image: CGImage
 }
 
+/// ScreenCaptureKit's filter and configuration are not marked Sendable; these are set up
+/// in full before being handed to a capture task and never changed after.
+private struct CaptureRequest: @unchecked Sendable {
+    var filter: SCContentFilter
+    var configuration: SCStreamConfiguration
+}
+
 public enum CaptureError: Error {
     /// The display the region was picked on went away before it could be captured.
     case displayUnavailable
@@ -27,20 +34,27 @@ public enum CaptureService {
         let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
         let ownApp = content.applications.filter { $0.processID == ProcessInfo.processInfo.processIdentifier }
 
-        var snapshots: [DisplaySnapshot] = []
-        for display in content.displays {
-            let filter = SCContentFilter(display: display, excludingApplications: ownApp, exceptingWindows: [])
-            let configuration = SCStreamConfiguration()
-            let scale = CGFloat(filter.pointPixelScale)
-            configuration.width = Int(filter.contentRect.width * scale)
-            configuration.height = Int(filter.contentRect.height * scale)
-            configuration.showsCursor = false
-            configuration.captureResolution = .best
+        // In parallel: with several large displays, one after another delays the overlay.
+        return try await withThrowingTaskGroup(of: DisplaySnapshot.self) { group in
+            for display in content.displays {
+                let filter = SCContentFilter(display: display, excludingApplications: ownApp, exceptingWindows: [])
+                let configuration = SCStreamConfiguration()
+                let scale = CGFloat(filter.pointPixelScale)
+                configuration.width = Int(filter.contentRect.width * scale)
+                configuration.height = Int(filter.contentRect.height * scale)
+                configuration.showsCursor = false
+                configuration.captureResolution = .best
 
-            let image = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: configuration)
-            snapshots.append(DisplaySnapshot(displayID: display.displayID, image: image))
+                let request = CaptureRequest(filter: filter, configuration: configuration)
+                let displayID = display.displayID
+                group.addTask {
+                    let image = try await SCScreenshotManager.captureImage(
+                        contentFilter: request.filter, configuration: request.configuration)
+                    return DisplaySnapshot(displayID: displayID, image: image)
+                }
+            }
+            return try await group.reduce(into: []) { $0.append($1) }
         }
-        return snapshots
     }
 
     /// Captures one region, given in points with origin top-left within a display, as it looks now.
@@ -62,6 +76,12 @@ public enum CaptureService {
         configuration.captureResolution = .best
 
         return try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: configuration)
+    }
+
+    /// Turns a rect from AppKit view coordinates (origin bottom-left) into the top-left origin
+    /// that `crop` and `captureRegion` take.
+    public static func topLeftRect(_ rect: CGRect, inHeight height: CGFloat) -> CGRect {
+        CGRect(x: rect.minX, y: height - rect.maxY, width: rect.width, height: rect.height)
     }
 
     /// Crops a region given in points (origin top-left) out of a snapshot.

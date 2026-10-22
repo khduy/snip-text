@@ -40,6 +40,8 @@ public struct HistoryItem: Codable, Identifiable, Equatable, Sendable {
 @Observable
 public final class HistoryStore {
     public private(set) var items: [HistoryItem] = []
+    /// An unreadable history file was moved aside and is still there; `clear()` removes it.
+    public private(set) var hasUnreadableFile = false
 
     private let fileURL: URL
     private let limit: Int
@@ -65,14 +67,31 @@ public final class HistoryStore {
         save()
     }
 
+    /// Also removes a history file moved aside as unreadable: it holds older captures too.
     public func clear() {
         items.removeAll()
         save()
+        try? FileManager.default.removeItem(at: unreadableFileURL)
+        // From the disk, not assumed: if the delete failed, the menu keeps offering it.
+        hasUnreadableFile = FileManager.default.fileExists(atPath: unreadableFileURL.path)
+    }
+
+    /// Where an unreadable history file is moved, so the next save does not overwrite it.
+    public var unreadableFileURL: URL {
+        fileURL.deletingPathExtension().appendingPathExtension("unreadable.json")
     }
 
     private func load() {
+        // Checked on every launch: the file can be left from one before, with no history.json now.
+        defer { hasUnreadableFile = FileManager.default.fileExists(atPath: unreadableFileURL.path) }
         guard let data = try? Data(contentsOf: fileURL) else { return }
-        items = (try? JSONDecoder().decode([HistoryItem].self, from: data)) ?? []
+        do {
+            items = try JSONDecoder().decode([HistoryItem].self, from: data)
+        } catch {
+            NSLog("SnipText: history unreadable, moved aside: \(error)")
+            try? FileManager.default.removeItem(at: unreadableFileURL)
+            try? FileManager.default.moveItem(at: fileURL, to: unreadableFileURL)
+        }
     }
 
     private func save() {

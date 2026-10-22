@@ -170,9 +170,7 @@ final class SelectionView: NSView {
             needsDisplay = true
             return
         }
-        let topLeft = CGRect(x: selection.minX, y: bounds.height - selection.maxY,
-                             width: selection.width, height: selection.height)
-        onFinish?(topLeft)
+        onFinish?(CaptureService.topLeftRect(selection, inHeight: bounds.height))
     }
 
     override func rightMouseDown(with event: NSEvent) { onFinish?(nil) }

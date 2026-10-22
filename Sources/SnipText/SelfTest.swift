@@ -8,7 +8,7 @@ import SwiftUI
 /// Screen Recording permission, OCRs the menu bar strip, writes a report and quits.
 ///
 /// `open SnipText.app --args --render-previews <dir>` renders the selection overlay, the HUD,
-/// the menu bar icon and the onboarding steps (with synthetic content, no screen access needed)
+/// the menu bar icon, Settings and the onboarding steps (with synthetic content, no screen access needed)
 /// to PNGs and quits.
 @MainActor
 enum SelfTest {
@@ -152,6 +152,14 @@ enum SelfTest {
             icon.draw(in: NSRect(x: 9, y: 9, width: 18, height: 18))
             NSGraphicsContext.restoreGraphicsState()
             write(rep, to: directory.appendingPathComponent("menubar-icon\(needsAttention ? "-attention" : "").png"))
+        }
+
+        // Through an NSHostingView rather than ImageRenderer, which cannot draw the shortcut recorder.
+        let settings = NSHostingView(rootView: SettingsView())
+        settings.frame.size = settings.fittingSize
+        if let rep = settings.bitmapImageRepForCachingDisplay(in: settings.bounds) {
+            settings.cacheDisplay(in: settings.bounds, to: rep)
+            write(rep, to: directory.appendingPathComponent("settings.png"))
         }
 
         for step in OnboardingModel.Step.allCases {

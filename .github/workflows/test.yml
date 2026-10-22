@@ -1,0 +1,16 @@
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      # OCR tests need Vision models that CI virtual machines may not provide.
+      - name: Test
+        run: swift test --skip OCRServiceTests

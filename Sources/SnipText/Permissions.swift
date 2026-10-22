@@ -121,11 +121,20 @@ enum Permissions {
     }
 
     static func relaunch(arguments extraArguments: [String] = []) {
-        // Quit first, then reopen; two instances would fight over the global hotkey.
+        // Quit first, then reopen once this process is gone; two instances would fight over the
+        // global hotkey. If it is somehow still running after 10 s, nothing is opened.
+        let script = """
+            pid=$1; shift; i=0
+            while kill -0 "$pid" 2>/dev/null; do
+              [ $i -ge 100 ] && exit 1
+              sleep 0.1; i=$((i + 1))
+            done
+            /usr/bin/open -n "$0" --args "$@"
+            """
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/sh")
-        process.arguments = ["-c", "sleep 0.5; /usr/bin/open -n \"$0\" --args \"$@\"", Bundle.main.bundlePath]
-            + extraArguments
+        process.arguments = ["-c", script, Bundle.main.bundlePath,
+                             String(ProcessInfo.processInfo.processIdentifier)] + extraArguments
         try? process.run()
         NSApp.terminate(nil)
     }

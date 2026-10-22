@@ -12,6 +12,7 @@ enum PrefKey {
     static let preferBarcode = "preferBarcode"
     static let showMenuBarIcon = "showMenuBarIcon"
     static let freezeScreen = "freezeScreen"
+    static let saveHistory = "saveHistory"
     /// No UI: `defaults write io.github.khduy.sniptext saveLastCapture -bool true`.
     static let saveLastCapture = "saveLastCapture"
 }
@@ -38,6 +39,12 @@ enum Preferences {
         UserDefaults.standard.bool(forKey: PrefKey.freezeScreen)
     }
 
+    /// On by default. Off: new captures are copied but not recorded; what is already there stays
+    /// until "Xoá lịch sử".
+    static var saveHistory: Bool {
+        UserDefaults.standard.bool(forKey: PrefKey.saveHistory, default: true)
+    }
+
     /// Off by default: the image can hold anything that was on screen.
     static var saveLastCapture: Bool {
         UserDefaults.standard.bool(forKey: PrefKey.saveLastCapture)
@@ -49,6 +56,7 @@ extension LineBreakMode {
         switch self {
         case .keepLines: "Giữ nguyên xuống dòng"
         case .mergeParagraphs: "Gộp thành đoạn văn"
+        case .preserveIndent: "Giữ thụt lề (cho code)"
         }
     }
 }

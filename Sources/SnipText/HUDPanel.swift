@@ -43,6 +43,11 @@ final class HUDPanel {
         hideTask = Task { [panel] in
             // Long enough to read the preview; longer still when there is a button to reach.
             try? await Task.sleep(for: .seconds(action != nil ? 4 : detail != nil ? 2.5 : 1.5))
+            // Stays while the pointer is on it, so the button does not vanish under the click.
+            // Checked by position: a panel that never becomes key gets no reliable hover events.
+            while !Task.isCancelled, panel.frame.contains(NSEvent.mouseLocation) {
+                try? await Task.sleep(for: .seconds(0.5))
+            }
             guard !Task.isCancelled else { return }
             panel.orderOut(nil)
         }

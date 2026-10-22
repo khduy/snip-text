@@ -3,7 +3,8 @@
 # SnipText
 
 App menu bar cho macOS (15+): bấm phím tắt, kéo chọn vùng màn hình, chữ được copy vào clipboard.
-OCR chạy offline bằng Apple Vision (tiếng Việt + English), đọc được cả QR/barcode.
+OCR chạy offline bằng Apple Vision, tự nhận diện ngôn ngữ (tiếng Việt, English, …), đọc được cả QR/barcode.
+Chụp code: chọn **Xuống dòng → Giữ thụt lề (cho code)** trong Cài đặt. App sẽ dựng lại thụt lề và không tự sửa chính tả.
 
 ## Cài đặt
 
@@ -67,7 +68,7 @@ defaults write io.github.khduy.sniptext saveLastCapture -bool true
 open ~/Library/Caches/SnipText/last-capture.png
 ```
 
-Xuất ảnh giao diện khung chọn và onboarding (dùng nội dung giả, không cần quyền) để xem nhanh:
+Xuất ảnh giao diện khung chọn, Cài đặt và onboarding (dùng nội dung giả, không cần quyền) để xem nhanh:
 
 ```bash
 open build/SnipText.app --args --render-previews /tmp/sniptext-previews

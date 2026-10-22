@@ -89,6 +89,11 @@ private struct MenuContent: View {
         let items = controller.history.items
         if items.isEmpty {
             Divider()
+            // Nothing to list, but an unreadable history file kept aside still holds old captures.
+            if controller.history.hasUnreadableFile {
+                Button("Xoá lịch sử") { controller.clearHistory() }
+                Divider()
+            }
         } else {
             Section("Gần đây") {
                 ForEach(Array(items.prefix(Self.recentCount).enumerated()), id: \.element.id) { index, item in
